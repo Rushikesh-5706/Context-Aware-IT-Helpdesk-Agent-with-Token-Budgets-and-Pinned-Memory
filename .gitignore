@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment files (never commit real keys)
+.env
+
+# Logs — keep the gitkeep but not any generated context files
+logs/*.json
+
+# Pytest cache
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
