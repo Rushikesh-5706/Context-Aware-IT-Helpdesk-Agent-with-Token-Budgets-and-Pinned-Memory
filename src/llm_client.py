@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 
-from openai import OpenAI, RateLimitError, APIError
+from openai import OpenAI, RateLimitError
 
 # ── client ─────────────────────────────────────────────────────────────────────
 
@@ -130,8 +131,7 @@ def extract_topic(message: str, current_topic: str) -> str:
         raw = response.choices[0].message.content.strip()
         # The model sometimes wraps the JSON in markdown fences or adds prose.
         # Grab the first {...} block and try to parse it.
-        import re as _re
-        match = _re.search(r'\{[^}]+\}', raw)
+        match = re.search(r'\{[^}]+\}', raw)
         candidate = match.group(0) if match else raw
         data = json.loads(candidate)
         topic = data.get("topic", current_topic)

@@ -19,13 +19,11 @@ The context on disk is therefore guaranteed to match the state before the turn.
 from __future__ import annotations
 
 import contextlib
-import copy
 import os
 from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from openai import APIError
 from pydantic import BaseModel
 
 from src.context_engine import (
