@@ -1,6 +1,6 @@
 # Context-Aware IT Helpdesk Agent
 
-A FastAPI service that maintains per-session conversational state for an IT helpdesk chatbot. It uses a rolling token window for recent history, permanent pinning for extracted entities (ticket IDs), and topic classification per turn. The LLM backend is Groq (`llama-3.3-70b-versatile`), token counting uses `tiktoken` with `cl100k_base`.
+A FastAPI service that maintains per-session conversational state for an IT helpdesk chatbot. It uses a rolling token window for recent history, permanent pinning for extracted entities (ticket IDs), and topic classification per turn. The LLM backend is Groq (`openai/gpt-oss-120b`), token counting uses `tiktoken` with `cl100k_base`.
 
 ---
 
@@ -16,7 +16,7 @@ sequenceDiagram
     C->>R: POST /v1/chat {session_id, message}
     R->>CE: Load or create AgentContext for session
     CE->>CE: Regex IT-\d{4} scan → update pinned.ticket_id
-    CE->>LLM: extract_topic(message, current_topic) [json_object mode]
+    CE->>LLM: extract_topic(message, current_topic) [JSON parse from free-form reply]
     LLM-->>CE: {topic: "..."}
     CE->>CE: Update active_topic
     CE->>CE: Append user message with token count
@@ -194,13 +194,11 @@ pytest tests/test_token_eviction.py -v
 
 ## Running the 5-turn evaluation
 
-The script connects to a running server on `localhost:8000`. Start the server first, then:
-
 ```bash
 python eval_5_turns.py
 ```
 
-It sets `TOKEN_BUDGET_LIMIT=100` internally to force eviction by turn 3, runs 5 turns with ticket `IT-8812`, and exits 0 on full pass or 1 with a specific failure message.
+The script starts its own isolated uvicorn server on port 8001 with `TOKEN_BUDGET_LIMIT=100` to force eviction by turn 3, runs 5 turns with ticket `IT-8812`, and exits 0 on full pass or 1 with a specific failure message. No separate server needs to be running first.
 
 ---
 
@@ -208,5 +206,5 @@ It sets `TOKEN_BUDGET_LIMIT=100` internally to force eviction by turn 3, runs 5 
 
 - Session state is in-memory only. Restarting the server loses all sessions (context files on disk survive but are not reloaded into memory on startup).
 - Groq's free tier is rate-limited (~30 requests/minute). The client retries once on 429 with a 1.5-second backoff; sustained load above the rate limit will still return 500s.
-- `tiktoken` with `cl100k_base` counts tokens for GPT-4-family models; Groq's `llama-3.3-70b-versatile` uses a different tokenizer internally. The budget mechanism is consistent and deterministic, but the exact token counts do not map 1:1 to what Groq charges or what the model's context window accepts.
+- `tiktoken` with `cl100k_base` counts tokens for GPT-4-family models; Groq's `openai/gpt-oss-120b` uses a different tokenizer internally. The budget mechanism is consistent and deterministic, but the exact token counts do not map 1:1 to what Groq charges or what the model's context window accepts.
 - No authentication on any endpoint. Do not expose port 8000 to the public internet without adding auth.
