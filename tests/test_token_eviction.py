@@ -62,11 +62,13 @@ def test_eviction_empty_list_is_safe():
     assert result == []
 
 
-def test_eviction_single_message_over_budget_leaves_it():
-    """A single message over budget — pop(0) on a one-element list empties it."""
+def test_eviction_keeps_last_message_even_when_it_alone_exceeds_budget():
+    """A single message over budget must still be kept.
+    The floor (len > 1) guarantees the current turn is never fully evicted,
+    even when that turn alone exceeds TOKEN_BUDGET_LIMIT."""
     msg = make_msg("user", "Huge message.", 200)
     result = apply_token_budget([msg], max_tokens=50)
-    assert result == []
+    assert result == [msg], "The last message must survive eviction even if it exceeds the budget alone"
 
 
 # ── tiktoken sanity ────────────────────────────────────────────────────────────

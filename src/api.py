@@ -46,6 +46,10 @@ load_dotenv()
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     ensure_logs_dir()
+    # Repopulate in-memory sessions from any context files that survived a
+    # previous run. This means a server restart does not silently lose state
+    # for sessions that already have a context file on disk.
+    _restore_sessions_from_disk()
     yield
 
 
@@ -53,6 +57,39 @@ app = FastAPI(title="IT Helpdesk Agent", lifespan=lifespan)
 
 # In-memory session store. Each entry is a live AgentContext.
 _sessions: dict[str, AgentContext] = {}
+
+
+def _restore_sessions_from_disk() -> None:
+    """
+    Scan logs/context_*.json and rebuild AgentContext objects so sessions
+    survive a server restart. Messages are rebuilt without token counts (we
+    re-count them with tiktoken) so the eviction logic stays correct.
+    """
+    from src.context_engine import LOGS_DIR, count_tokens
+    for log_file in sorted(LOGS_DIR.glob("context_*.json")):
+        try:
+            raw = load_context_from_disk(log_file.stem.removeprefix("context_"))
+            if raw is None:
+                continue
+            messages = [
+                Message(
+                    role=m["role"],
+                    content=m["content"],
+                    tokens=count_tokens(m["content"]),
+                )
+                for m in raw.get("recent", [])
+            ]
+            ctx = AgentContext(
+                session_id=raw["session_id"],
+                active_topic=raw.get("active_topic", "general"),
+                pinned=PinnedMemory(ticket_id=raw.get("pinned", {}).get("ticket_id")),
+                recent=messages,
+                total_recent_tokens=sum(m.tokens for m in messages),
+            )
+            _sessions[ctx.session_id] = ctx
+        except Exception:
+            # A corrupt or partially-written file must not crash startup.
+            continue
 
 
 # ── schemas ────────────────────────────────────────────────────────────────────

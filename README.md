@@ -204,7 +204,7 @@ The script starts its own isolated uvicorn server on port 8001 with `TOKEN_BUDGE
 
 ## Known limitations
 
-- Session state is in-memory only. Restarting the server loses all sessions (context files on disk survive but are not reloaded into memory on startup).
+- Session state is reloaded from `logs/context_*.json` on server startup, so restarts do not lose sessions that have completed at least one turn. Sessions that never produced a successful reply (no context file written) are not restored.
 - Groq's free tier is rate-limited (~30 requests/minute). The client retries once on 429 with a 1.5-second backoff; sustained load above the rate limit will still return 500s.
 - `tiktoken` with `cl100k_base` counts tokens for GPT-4-family models; Groq's `openai/gpt-oss-120b` uses a different tokenizer internally. The budget mechanism is consistent and deterministic, but the exact token counts do not map 1:1 to what Groq charges or what the model's context window accepts.
 - No authentication on any endpoint. Do not expose port 8000 to the public internet without adding auth.

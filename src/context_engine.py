@@ -54,12 +54,17 @@ def apply_token_budget(recent: list[Message], max_tokens: int) -> list[Message]:
     """
     Evict oldest messages one at a time until total tokens fit within max_tokens.
 
-    Operates on a copy so the caller decides when to commit the result back.
+    The loop stops when only one message remains, even if that message alone
+    exceeds the budget. This guarantees the current turn is never fully evicted —
+    a hard ceiling that produces zero messages is not a rolling window, it's
+    amnesia. The budget becomes a soft ceiling in the single-oversized-message
+    edge case, which is the correct tradeoff.
+
     Pinned memory is never passed into this function — it lives separately in
     AgentContext.pinned and never counts toward the rolling budget.
     """
-    messages = list(recent)  # shallow copy; Message objects are Pydantic and immutable enough
-    while messages and sum(m.tokens for m in messages) > max_tokens:
+    messages = list(recent)
+    while len(messages) > 1 and sum(m.tokens for m in messages) > max_tokens:
         messages.pop(0)   # oldest first — matches reference skeleton
     return messages
 

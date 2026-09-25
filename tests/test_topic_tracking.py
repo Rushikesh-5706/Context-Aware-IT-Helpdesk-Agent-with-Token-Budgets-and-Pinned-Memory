@@ -66,7 +66,10 @@ def test_ticket_message_shifts_topic():
     )
     assert resp.status_code == 200
     topic = _read_topic(sid)
-    assert topic in TICKET_LABELS | {"general"}, f"Got unexpected topic {topic!r}"
+    # "general" is excluded on purpose — a message that explicitly names a ticket
+    # must produce a ticket-related label; accepting general would make this
+    # test unable to catch a wrong classification.
+    assert topic in TICKET_LABELS, f"Expected a ticket-related topic, got {topic!r}"
 
 
 def test_topic_in_api_response_matches_file():
